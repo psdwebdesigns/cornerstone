@@ -1,7 +1,7 @@
 <div class="modal-header">
-    <h2 class="modal-header-title">
+    <h1 class="modal-header-title">
         {{lang 'cart.added_to_cart.what_next' num_products=cart.quantity}}
-    </h2>
+    </h1>
 </div>
 
 <div class="modal-body">
@@ -55,19 +55,20 @@
             {{#with cart.added_item}}
                 <figure class="productView-image">
                     <div class="productView-img-container">
-                        <img class="productView-image--cart lazyload"
-                            data-sizes="auto"
-                            src="{{cdn 'img/loading.svg'}}"
-                            data-src="{{getImage image 'product_size' (cdn ../theme_settings.default_image_product)}}"
-                            alt="{{image.alt}}"
-                            title="{{image.alt}}" />
+                        {{> components/common/responsive-img
+                            image=image
+                            class="productView-image--cart"
+                            fallback_size=../theme_settings.product_size
+                            lazyload=../theme_settings.lazyload_mode
+                            default_image=../theme_settings.default_image_product
+                        }}
                     </div>
                 </figure>
 
                 <div class="productView-details">
-                    <h4 class="productView-title">
+                    <h2 class="productView-title">
                         {{name}}
-                    </h4>
+                    </h2>
 
                     <div class="productView-brand">
                         {{brand.name}}
@@ -81,26 +82,13 @@
                         {{/or}}
                     </div>
 
-                    {{#each configurable_fields}}
-                        <dl class="productView-info">
-                            <dt class="productView-info-name">
-                                {{name}}
-                            </dt>
-                            {{#if is_file}}
-                                <a href="/viewfile.php?prodfield={{../id}}&cartitem={{../../id}}">{{{value}}}</a>
-                            {{else}}
-                                {{{value}}}
-                            {{/if}}
-                        </dl>
-                    {{/each}}
-
                     {{#each options}}
                         <dl class="productView-info">
                             <dt class="productView-info-name">
                                 {{name}}
                             </dt>
                             <dd class="productView-info-value">
-                                {{value}}
+                                {{> components/common/product-options}}
                             </dd>
                         </dl>
                     {{/each}}
@@ -111,9 +99,9 @@
 
     {{#if cart.suggested_products}}
         <section class="suggestiveCart">
-            <h4>
+            <h2>
                 {{lang 'cart.added_to_cart.you_might_also_like'}}&hellip;
-            </h4>
+            </h2>
 
             <ul class="productGrid">
                 {{#each cart.suggested_products}}

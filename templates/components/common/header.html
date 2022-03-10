@@ -1,3 +1,4 @@
+<a href="#main-content" class="skip-to-main-link">{{lang 'header.skip_to_main'}}</a>
 {{#if banners.top}}
 <div class="banners" data-banner-location="top">
     {{#each (limit banners.top_metadata 1)}}
@@ -24,8 +25,9 @@
             {{> components/common/store-logo}}
         </div>
     {{/if}}
-    {{{region name="header_bottom"}}}
     <div class="navPages-container" id="menu" data-menu>
         {{> components/common/navigation-menu}}
     </div>
 </header>
+{{{region name="header_bottom--global"}}}
+{{{region name="header_bottom"}}}

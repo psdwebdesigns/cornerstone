@@ -1,25 +1,41 @@
 import PageManager from './page-manager';
-import $ from 'jquery';
-import _ from 'lodash';
-import giftCertCheck from './common/gift-certificate-validator';
+import { bind, debounce } from 'lodash';
+import checkIsGiftCertValid from './common/gift-certificate-validator';
+import { createTranslationDictionary } from './common/utils/translations-utils';
 import utils from '@bigcommerce/stencil-utils';
 import ShippingEstimator from './cart/shipping-estimator';
-import { defaultModal } from './global/modal';
-import swal from 'sweetalert2';
+import { defaultModal, ModalEvents } from './global/modal';
+import swal from './global/sweet-alert';
+import CartItemDetails from './common/cart-item-details';
 
 export default class Cart extends PageManager {
     onReady() {
+        this.$modal = null;
+        this.$cartPageContent = $('[data-cart]');
         this.$cartContent = $('[data-cart-content]');
         this.$cartMessages = $('[data-cart-status]');
         this.$cartTotals = $('[data-cart-totals]');
+        this.$cartAdditionalCheckoutBtns = $('[data-cart-additional-checkout-buttons]');
         this.$overlay = $('[data-cart] .loadingOverlay')
             .hide(); // TODO: temporary until roper pulls in his cart components
+        this.$activeCartItemId = null;
+        this.$activeCartItemBtnAction = null;
 
+        this.setApplePaySupport();
         this.bindEvents();
+    }
+
+    setApplePaySupport() {
+        if (window.ApplePaySession) {
+            this.$cartPageContent.addClass('apple-pay-supported');
+        }
     }
 
     cartUpdate($target) {
         const itemId = $target.data('cartItemid');
+        this.$activeCartItemId = itemId;
+        this.$activeCartItemBtnAction = $target.data('action');
+
         const $el = $(`#qty-${itemId}`);
         const oldQty = parseInt($el.val(), 10);
         const maxQty = parseInt($el.data('quantityMax'), 10);
@@ -29,14 +45,14 @@ export default class Cart extends PageManager {
         const newQty = $target.data('action') === 'inc' ? oldQty + 1 : oldQty - 1;
         // Does not quality for min/max quantity
         if (newQty < minQty) {
-            return swal({
+            return swal.fire({
                 text: minError,
-                type: 'error',
+                icon: 'error',
             });
         } else if (maxQty > 0 && newQty > maxQty) {
-            return swal({
+            return swal.fire({
                 text: maxError,
-                type: 'error',
+                icon: 'error',
             });
         }
 
@@ -52,9 +68,9 @@ export default class Cart extends PageManager {
                 this.refreshContent(remove);
             } else {
                 $el.val(oldQty);
-                swal({
+                swal.fire({
                     text: response.data.errors.join('\n'),
-                    type: 'error',
+                    icon: 'error',
                 });
             }
         });
@@ -68,27 +84,28 @@ export default class Cart extends PageManager {
         const oldQty = preVal !== null ? preVal : minQty;
         const minError = $el.data('quantityMinError');
         const maxError = $el.data('quantityMaxError');
-        const newQty = parseInt(Number($el.attr('value')), 10);
+        const newQty = parseInt(Number($el.val()), 10);
         let invalidEntry;
+
         // Does not quality for min/max quantity
         if (!newQty) {
-            invalidEntry = $el.attr('value');
+            invalidEntry = $el.val();
             $el.val(oldQty);
-            return swal({
-                text: `${invalidEntry} is not a valid entry`,
-                type: 'error',
+            return swal.fire({
+                text: this.context.invalidEntryMessage.replace('[ENTRY]', invalidEntry),
+                icon: 'error',
             });
         } else if (newQty < minQty) {
             $el.val(oldQty);
-            return swal({
+            return swal.fire({
                 text: minError,
-                type: 'error',
+                icon: 'error',
             });
         } else if (maxQty > 0 && newQty > maxQty) {
             $el.val(oldQty);
-            return swal({
+            return swal.fire({
                 text: maxError,
-                type: 'error',
+                icon: 'error',
             });
         }
 
@@ -103,9 +120,9 @@ export default class Cart extends PageManager {
                 this.refreshContent(remove);
             } else {
                 $el.val(oldQty);
-                swal({
+                swal.fire({
                     text: response.data.errors.join('\n'),
-                    type: 'error',
+                    icon: 'error',
                 });
             }
         });
@@ -117,42 +134,63 @@ export default class Cart extends PageManager {
             if (response.data.status === 'succeed') {
                 this.refreshContent(true);
             } else {
-                swal({
+                swal.fire({
                     text: response.data.errors.join('\n'),
-                    type: 'error',
+                    icon: 'error',
                 });
             }
         });
     }
 
-    cartEditOptions(itemId) {
+    cartEditOptions(itemId, productId) {
+        const context = { productForChangeId: productId, ...this.context };
         const modal = defaultModal();
+
+        if (this.$modal === null) {
+            this.$modal = $('#modal');
+        }
+
         const options = {
             template: 'cart/modals/configure-product',
         };
 
         modal.open();
+        this.$modal.find('.modal-content').addClass('hide-content');
 
         utils.api.productAttributes.configureInCart(itemId, options, (err, response) => {
             modal.updateContent(response.content);
+            const optionChangeHandler = () => {
+                const $productOptionsContainer = $('[data-product-attributes-wrapper]', this.$modal);
+                const modalBodyReservedHeight = $productOptionsContainer.outerHeight();
+
+                if ($productOptionsContainer.length && modalBodyReservedHeight) {
+                    $productOptionsContainer.css('height', modalBodyReservedHeight);
+                }
+            };
+
+            if (this.$modal.hasClass('open')) {
+                optionChangeHandler();
+            } else {
+                this.$modal.one(ModalEvents.opened, optionChangeHandler);
+            }
+
+            this.productDetails = new CartItemDetails(this.$modal, context);
 
             this.bindGiftWrappingForm();
         });
 
-        utils.hooks.on('product-option-change', (event, option) => {
-            const $changedOption = $(option);
-            const $form = $changedOption.parents('form');
+        utils.hooks.on('product-option-change', (event, currentTarget) => {
+            const $form = $(currentTarget).find('form');
             const $submit = $('input.button', $form);
             const $messageBox = $('.alertMessageBox');
-            const item = $('[name="item_id"]', $form).attr('value');
 
-            utils.api.productAttributes.optionChange(item, $form.serialize(), (err, result) => {
+            utils.api.productAttributes.optionChange(productId, $form.serialize(), (err, result) => {
                 const data = result.data || {};
 
                 if (err) {
-                    swal({
+                    swal.fire({
                         text: err,
-                        type: 'error',
+                        icon: 'error',
                     });
                     return false;
                 }
@@ -184,6 +222,7 @@ export default class Cart extends PageManager {
                 totals: 'cart/totals',
                 pageTitle: 'cart/page-title',
                 statusMessages: 'cart/status-messages',
+                additionalCheckoutButtons: 'cart/additional-checkout-buttons',
             },
         };
 
@@ -198,6 +237,7 @@ export default class Cart extends PageManager {
             this.$cartContent.html(response.content);
             this.$cartTotals.html(response.totals);
             this.$cartMessages.html(response.statusMessages);
+            this.$cartAdditionalCheckoutBtns.html(response.additionalCheckoutButtons);
 
             $cartPageTitle.replaceWith(response.pageTitle);
             this.bindEvents();
@@ -206,14 +246,18 @@ export default class Cart extends PageManager {
             const quantity = $('[data-cart-quantity]', this.$cartContent).data('cartQuantity') || 0;
 
             $('body').trigger('cart-quantity-update', quantity);
+
+            $(`[data-cart-itemid='${this.$activeCartItemId}']`, this.$cartContent)
+                .filter(`[data-action='${this.$activeCartItemBtnAction}']`)
+                .trigger('focus');
         });
     }
 
     bindCartEvents() {
         const debounceTimeout = 400;
-        const cartUpdate = _.bind(_.debounce(this.cartUpdate, debounceTimeout), this);
-        const cartUpdateQtyTextChange = _.bind(_.debounce(this.cartUpdateQtyTextChange, debounceTimeout), this);
-        const cartRemoveItem = _.bind(_.debounce(this.cartRemoveItem, debounceTimeout), this);
+        const cartUpdate = bind(debounce(this.cartUpdate, debounceTimeout), this);
+        const cartUpdateQtyTextChange = bind(debounce(this.cartUpdateQtyTextChange, debounceTimeout), this);
+        const cartRemoveItem = bind(debounce(this.cartRemoveItem, debounceTimeout), this);
         let preVal;
 
         // cart update
@@ -227,7 +271,7 @@ export default class Cart extends PageManager {
         });
 
         // cart qty manually updates
-        $('.cart-item-qty-input', this.$cartContent).on('focus', () => {
+        $('.cart-item-qty-input', this.$cartContent).on('focus', function onQtyFocus() {
             preVal = this.value;
         }).change(event => {
             const $target = $(event.currentTarget);
@@ -240,23 +284,26 @@ export default class Cart extends PageManager {
         $('.cart-remove', this.$cartContent).on('click', event => {
             const itemId = $(event.currentTarget).data('cartItemid');
             const string = $(event.currentTarget).data('confirmDelete');
-            swal({
+            swal.fire({
                 text: string,
-                type: 'warning',
+                icon: 'warning',
                 showCancelButton: true,
-            }).then(() => {
-                // remove item from cart
-                cartRemoveItem(itemId);
+                cancelButtonText: this.context.cancelButtonText,
+            }).then((result) => {
+                if (result.value) {
+                    // remove item from cart
+                    cartRemoveItem(itemId);
+                }
             });
             event.preventDefault();
         });
 
         $('[data-item-edit]', this.$cartContent).on('click', event => {
             const itemId = $(event.currentTarget).data('itemEdit');
-
+            const productId = $(event.currentTarget).data('productId');
             event.preventDefault();
             // edit item in cart
-            this.cartEditOptions(itemId);
+            this.cartEditOptions(itemId, productId);
         });
     }
 
@@ -289,9 +336,9 @@ export default class Cart extends PageManager {
 
             // Empty code
             if (!code) {
-                return swal({
+                return swal.fire({
                     text: $codeInput.data('error'),
-                    type: 'error',
+                    icon: 'error',
                 });
             }
 
@@ -299,9 +346,9 @@ export default class Cart extends PageManager {
                 if (response.data.status === 'success') {
                     this.refreshContent();
                 } else {
-                    swal({
-                        text: response.data.errors.join('\n'),
-                        type: 'error',
+                    swal.fire({
+                        html: response.data.errors.join('\n'),
+                        icon: 'error',
                     });
                 }
             });
@@ -332,10 +379,11 @@ export default class Cart extends PageManager {
 
             event.preventDefault();
 
-            if (!giftCertCheck(code)) {
-                return swal({
-                    text: $certInput.data('error'),
-                    type: 'error',
+            if (!checkIsGiftCertValid(code)) {
+                const validationDictionary = createTranslationDictionary(this.context);
+                return swal.fire({
+                    text: validationDictionary.invalid_gift_certificate,
+                    icon: 'error',
                 });
             }
 
@@ -343,9 +391,9 @@ export default class Cart extends PageManager {
                 if (resp.data.status === 'success') {
                     this.refreshContent();
                 } else {
-                    swal({
-                        text: resp.data.errors.join('\n'),
-                        type: 'error',
+                    swal.fire({
+                        html: resp.data.errors.join('\n'),
+                        icon: 'error',
                     });
                 }
             });
@@ -423,6 +471,10 @@ export default class Cart extends PageManager {
         this.bindGiftCertificateEvents();
 
         // initiate shipping estimator module
-        this.shippingEstimator = new ShippingEstimator($('[data-shipping-estimator]'));
+        const shippingErrorMessages = {
+            country: this.context.shippingCountryErrorMessage,
+            province: this.context.shippingProvinceErrorMessage,
+        };
+        this.shippingEstimator = new ShippingEstimator($('[data-shipping-estimator]'), shippingErrorMessages);
     }
 }

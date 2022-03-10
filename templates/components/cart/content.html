@@ -12,33 +12,31 @@
             <tr class="cart-item" data-item-row>
                 <td class="cart-item-block cart-item-figure">
                     {{#if type '==' 'GiftCertificate'}}
-                        <img class="cart-item-fixed-image lazyload" data-sizes="auto" src="{{cdn 'img/loading.svg'}}" data-src="{{cdn ../../theme_settings.default_image_gift_certificate}}" alt="GiftCertificate" title="GiftCertificate">
+                        <img
+                            class="cart-item-fixed-image"
+                            src="{{cdn ../theme_settings.default_image_gift_certificate}}"
+                            alt="{{lang 'cart.gift_certificates.gift_certificate'}}"
+                            title="{{lang 'cart.gift_certificates.gift_certificate'}}"
+                        >
                     {{else}}
-                        <img class="cart-item-image lazyload" data-sizes="auto" src="{{cdn 'img/loading.svg'}}" data-src="{{getImage image 'productthumb_size' (cdn ../../theme_settings.default_image_product)}}" alt="{{image.alt}}" title="{{image.alt}}">
+                        {{> components/common/responsive-img
+                            image=image
+                            class="cart-item-image"
+                            fallback_size=../theme_settings.productthumb_size
+                            lazyload="lazyload"
+                            default_image=../theme_settings.default_image_product
+                        }}
                     {{/if}}
                 </td>
                 <td class="cart-item-block cart-item-title">
                     {{#if brand.name}}
                         <p class="cart-item-brand">{{brand.name}}</p>
                     {{/if}}
-                    <h4 class="cart-item-name"><a href="{{url}}">{{name}}</a></h4>
+                    <h2 class="cart-item-name">
+                        <a class="cart-item-name__label" href="{{url}}">{{name}}</a>
+                    </h2>
                     {{#if release_date}}
                         <p>({{release_date}})</p>
-                    {{/if}}
-
-                    {{#if configurable_fields}}
-                        <dl class="definitionList">
-                            {{#each configurable_fields}}
-                                <dt class="definitionList-key">{{name}}:</dt>
-                                <dd class="definitionList-value">
-                                    {{#if is_file}}
-                                        <a href="/viewfile.php?prodfield={{../id}}&cartitem={{../../id}}">{{{value}}}</a>
-                                    {{else}}
-                                        {{{value}}}
-                                    {{/if}}
-                                </dd>
-                            {{/each}}
-                        </dl>
                     {{/if}}
 
                     {{#if options}}
@@ -47,21 +45,29 @@
                                 <dt class="definitionList-key">{{name}}:</dt>
                                 <dd class="definitionList-value">
                                     {{#if is_file}}
-                                        <a href="/viewfile.php?attributeId={{../id}}&cartitem={{../../id}}">{{{value}}}</a>
+                                        <a href="/viewfile.php?attributeId={{id}}&cartitem={{../id}}">{{value}}</a>
                                     {{else}}
-                                        {{{value}}}
+                                        {{> components/common/product-options}}
                                     {{/if}}
                                 </dd>
                             {{/each}}
                         </dl>
+
+                        <a href="#"
+                           data-item-edit="{{id}}"
+                           data-product-id="{{product_id}}"
+                           aria-label="{{lang 'products.change_product_options' name=name}}"
+                        >
+                            {{lang 'common.change'}}
+                        </a>
                     {{/if}}
 
-                    {{#or options configurable_fields}}
-                        <a href="#" data-item-edit="{{id}}">{{lang 'cart.checkout.change'}}</a>
-                    {{/or}}
-
                     {{#if type '==' 'GiftCertificate'}}
-                        <a href="{{edit_url}}">{{lang 'cart.checkout.change'}}</a>
+                        <a href="{{edit_url}}"
+                           aria-label="{{lang 'cart.gift_certificates.change_gift_certificate' certificate_name=name}}"
+                        >
+                            {{lang 'common.change'}}
+                        </a>
                     {{/if}}
                     {{> components/cart/item-giftwrap this}}
                     {{#if event_date}}
@@ -93,9 +99,13 @@
 
                     <label class="form-label cart-item-label" for="qty-{{id}}">{{lang 'products.quantity'}}</label>
                     <div class="form-increment">
-                        {{# if can_modify}}
-                            <button class="button button--icon" data-cart-update data-cart-itemid="{{id}}" data-action="dec">
-                                <span class="is-srOnly">{{lang 'products.quantity_decrease'}}</span>
+                        {{#if can_modify}}
+                            <button class="button button--icon"
+                                    data-cart-update
+                                    data-cart-itemid="{{id}}"
+                                    data-action="dec"
+                            >
+                                <span class="is-srOnly">{{lang 'products.quantity_decrease' name=name}}</span>
                                 <i class="icon" aria-hidden="true"><svg><use xlink:href="#icon-keyboard-arrow-down" /></svg></i>
                             </button>
                         {{/if}}
@@ -112,10 +122,15 @@
                                pattern="[0-9]*"
                                data-cart-itemid="{{id}}"
                                data-action="manualQtyChange"
+                               aria-label="{{name}}"
                                aria-live="polite"{{#unless can_modify}} disabled{{/unless}}>
-                        {{# if can_modify}}
-                            <button class="button button--icon" data-cart-update data-cart-itemid="{{id}}" data-action="inc">
-                                <span class="is-srOnly">{{lang 'products.quantity_increase'}}</span>
+                        {{#if can_modify}}
+                            <button class="button button--icon"
+                                    data-cart-update
+                                    data-cart-itemid="{{id}}"
+                                    data-action="inc"
+                            >
+                                <span class="is-srOnly">{{lang 'products.quantity_increase' name=name}}</span>
                                 <i class="icon" aria-hidden="true"><svg><use xlink:href="#icon-keyboard-arrow-up" /></svg></i>
                             </button>
                         {{/if}}
@@ -133,20 +148,17 @@
                     {{else}}
                         {{> components/common/login-for-pricing}}
                     {{/or}}
-                    {{# if can_modify}}
-                        <a class="cart-remove icon" data-cart-itemid="{{id}}" href="#" data-confirm-delete="{{lang 'cart.confirm_delete'}}">
+                    {{#or can_modify (if type '==' 'GiftCertificate')}}
+                        <button class="cart-remove icon"
+                                data-cart-itemid="{{id}}"
+                                data-confirm-delete="{{lang 'cart.confirm_delete'}}"
+                                aria-label="{{lang 'cart.remove_item' name=name}}"
+                        >
                             <svg><use xlink:href="#icon-close"></use></svg>
-                        </a>
-                    {{else}}
-                        {{#if type '==' 'GiftCertificate'}}
-                            <a class="cart-remove icon" data-cart-itemid="{{id}}" href="#" data-confirm-delete="{{lang 'cart.confirm_delete'}}">
-                                <svg><use xlink:href="#icon-close"></use></svg>
-                            </a>
-                        {{/if}}
-                    {{/if}}
+                        </button>
+                    {{/or}}
                 </td>
             </tr>
         {{/each}}
     </tbody>
 </table>
-{{{ remote_api_scripts }}}

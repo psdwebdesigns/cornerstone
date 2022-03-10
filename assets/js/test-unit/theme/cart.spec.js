@@ -1,12 +1,14 @@
 import $ from 'jquery'
 import utils from '@bigcommerce/stencil-utils';
 import Cart from '../../theme/cart.js';
-import * as SweetAlert from 'sweetalert2';
 
 var dataSpy;
-var swalSpy;
 var UpdateSpy;
 var c = new Cart();
+c.context = {
+    shippingCountryErrorMessage: `The 'Country' field cannot be blank.`,
+    shippingProvinceErrorMessage: `The 'State/Province' field cannot be blank.`,
+};
 beforeEach(function() {
 	UpdateSpy = spyOn(utils.api.cart, 'itemUpdate');
 
@@ -116,8 +118,7 @@ describe('cartUpdateQtyTextChange', () => {
     it('should CHANGE qty completly based on the cart-item-qty-input', () => {	
 		dataSpy
 		dataSpy('manualQtyChange');
-		spyOn(jQuery.fn, 'attr').and.returnValue(5);
-		spyOn(jQuery.fn, 'val').and.returnValue(2);
+		spyOn(jQuery.fn, 'val').and.returnValue(5, 2);
 		c.cartUpdateQtyTextChange($dom);
 		
 		expect(UpdateSpy).toHaveBeenCalledWith('11111', 5, jasmine.any(Function));  

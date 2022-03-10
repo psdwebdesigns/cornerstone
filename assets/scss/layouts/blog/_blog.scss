@@ -29,11 +29,9 @@
         text-align: center;
     }
 
-    // scss-lint:disable SelectorFormat
     .addthis_toolbox {
         margin-top: spacing("double");
     }
-    // scss-lint:enable SelectorFormat
 }
 
 .blog-title {
@@ -62,14 +60,12 @@
 
 .blog-thumbnail {
     margin: 0 auto (spacing("base") * 2);
+    max-width: get_width(stencilString("blog_size"));
     position: relative;
-    max-width: get_width(stencilString('blog_size'));
 
     img {
-        @include lazy-loaded-img;
+        width: 100%;
     }
-
-    @include lazy-loaded-padding('blog_size');
 }
 
 .blog-post-figure {

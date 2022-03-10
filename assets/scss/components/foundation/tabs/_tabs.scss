@@ -44,6 +44,10 @@
     @include breakpoint("medium") {
         padding: spacing("half") spacing("single");
     }
+
+    @include breakpoint("large") {
+        padding: remCalc(11px) remCalc(18px);
+    }
 }
 
 .tab-content {
@@ -61,14 +65,12 @@
         padding: 0;
         visibility: hidden;
 
-        // scss-lint:disable NestingDepth
         &.is-active {
             height: auto;
             overflow: visible;
             padding: $tabs-content-padding;
             visibility: visible;
         }
-        // scss-lint:enable NestingDepth
     }
 
 

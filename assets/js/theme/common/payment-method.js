@@ -1,4 +1,3 @@
-import $ from 'jquery';
 import creditcards from 'creditcards';
 
 /**
@@ -39,8 +38,9 @@ export const storeInstrument = ({
     vaultToken,
 }, {
     /* eslint-disable */
-    // Provider Name
+    // Provider Info
     provider_id,
+    currency_code,
 
     // Instrument Details
     credit_card_number,
@@ -99,6 +99,7 @@ export const storeInstrument = ({
             }),
             provider_id,
             default_instrument,
+            currency_code,
         }),
     })
         .done(done)

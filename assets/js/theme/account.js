@@ -1,18 +1,25 @@
 import PageManager from './page-manager';
 import _ from 'lodash';
-import $ from 'jquery';
 import nod from './common/nod';
 import Wishlist from './wishlist';
 import validation from './common/form-validation';
 import stateCountry from './common/state-country';
-import { classifyForm, Validators, insertStateHiddenField } from './common/form-utils';
+import {
+    classifyForm,
+    Validators,
+    announceInputErrorMessage,
+    insertStateHiddenField,
+    createPasswordValidationErrorTextObject,
+} from './common/utils/form-utils';
+import { createTranslationDictionary } from './common/utils/translations-utils';
 import { creditCardType, storeInstrument, Validators as CCValidators, Formatters as CCFormatters } from './common/payment-method';
-import swal from 'sweetalert2';
+import swal from './global/sweet-alert';
+import compareProducts from './global/compare-products';
 
 export default class Account extends PageManager {
     constructor(context) {
         super(context);
-
+        this.validationDictionary = createTranslationDictionary(context);
         this.$state = $('[data-field-type="State"]');
         this.$body = $('body');
     }
@@ -25,6 +32,8 @@ export default class Account extends PageManager {
         const $paymentMethodForm = classifyForm('form[data-payment-method-form]');
         const $reorderForm = classifyForm('[data-account-reorder-form]');
         const $invoiceButton = $('[data-print-invoice]');
+
+        compareProducts(this.context);
 
         // Injected via template
         this.passwordRequirements = this.context.passwordRequirements;
@@ -122,20 +131,21 @@ export default class Account extends PageManager {
 
             if (!submitForm) {
                 event.preventDefault();
-                swal({
+                swal.fire({
                     text: this.context.selectItem,
-                    type: 'error',
+                    icon: 'error',
                 });
             }
         });
     }
 
     initAddressFormValidation($addressForm) {
-        const validationModel = validation($addressForm);
+        const validationModel = validation($addressForm, this.context);
         const stateSelector = 'form[data-address-form] [data-field-type="State"]';
         const $stateElement = $(stateSelector);
         const addressValidator = nod({
             submit: 'form[data-address-form] input[type="submit"]',
+            tap: announceInputErrorMessage,
         });
 
         addressValidator.add(validationModel);
@@ -161,7 +171,7 @@ export default class Account extends PageManager {
 
                 if ($field.is('select')) {
                     $last = field;
-                    Validators.setStateCountryValidation(addressValidator, field);
+                    Validators.setStateCountryValidation(addressValidator, field, this.validationDictionary.field_not_blank);
                 } else {
                     Validators.cleanUpStateValidation(field);
                 }
@@ -199,9 +209,9 @@ export default class Account extends PageManager {
                 return true;
             }
 
-            swal({
+            swal.fire({
                 text: errorMessage,
-                type: 'error',
+                icon: 'error',
             });
 
             return event.preventDefault();
@@ -221,9 +231,12 @@ export default class Account extends PageManager {
         $paymentMethodForm.find('#state.form-field').attr('data-validation', `{ "type": "singleline", "label": "${this.context.stateLabel}", "required": true, "maxlength": 0 }`);
         $paymentMethodForm.find('#postal_code.form-field').attr('data-validation', `{ "type": "singleline", "label": "${this.context.postalCodeLabel}", "required": true, "maxlength": 0 }`);
 
-        const validationModel = validation($paymentMethodForm);
+        const validationModel = validation($paymentMethodForm, this.context);
         const paymentMethodSelector = 'form[data-payment-method-form]';
-        const paymentMethodValidator = nod({ submit: `${paymentMethodSelector} input[type="submit"]` });
+        const paymentMethodValidator = nod({
+            submit: `${paymentMethodSelector} input[type="submit"]`,
+            tap: announceInputErrorMessage,
+        });
         const $stateElement = $(`${paymentMethodSelector} [data-field-type="State"]`);
 
         let $last;
@@ -245,7 +258,7 @@ export default class Account extends PageManager {
 
             if ($field.is('select')) {
                 $last = field;
-                Validators.setStateCountryValidation(paymentMethodValidator, field);
+                Validators.setStateCountryValidation(paymentMethodValidator, field, this.validationDictionary.field_not_blank);
             } else {
                 Validators.cleanUpStateValidation(field);
             }
@@ -256,7 +269,7 @@ export default class Account extends PageManager {
         $(`${paymentMethodSelector} input[name="credit_card_number"]`).on('keyup', ({ target }) => {
             cardType = creditCardType(target.value);
             if (cardType) {
-                $(`${paymentMethodSelector} img[alt="${cardType}"`).siblings().css('opacity', '.2');
+                $(`${paymentMethodSelector} img[alt="${cardType}"]`).siblings().css('opacity', '.2');
             } else {
                 $(`${paymentMethodSelector} img`).css('opacity', '1');
             }
@@ -270,7 +283,7 @@ export default class Account extends PageManager {
 
         // Set of credit card format
         CCFormatters.setCreditCardNumberFormat(`${paymentMethodSelector} input[name="credit_card_number"]`);
-        CCFormatters.setExpirationFormat(`${paymentMethodSelector} input[name="expiration"`);
+        CCFormatters.setExpirationFormat(`${paymentMethodSelector} input[name="expiration"]`);
 
         // Billing address validation
         paymentMethodValidator.add(validationModel);
@@ -300,9 +313,9 @@ export default class Account extends PageManager {
                 storeInstrument(this.context, data, () => {
                     window.location.href = this.context.paymentMethodsUrl;
                 }, () => {
-                    swal({
+                    swal.fire({
                         text: this.context.generic_error,
-                        type: 'error',
+                        icon: 'error',
                     });
                 });
             }
@@ -310,10 +323,11 @@ export default class Account extends PageManager {
     }
 
     registerEditAccountValidation($editAccountForm) {
-        const validationModel = validation($editAccountForm);
+        const validationModel = validation($editAccountForm, this.context);
         const formEditSelector = 'form[data-edit-account-form]';
         const editValidator = nod({
             submit: '${formEditSelector} input[type="submit"]',
+            tap: announceInputErrorMessage,
         });
         const emailSelector = `${formEditSelector} [data-field-type="EmailAddress"]`;
         const $emailElement = $(emailSelector);
@@ -329,10 +343,11 @@ export default class Account extends PageManager {
 
         if ($emailElement) {
             editValidator.remove(emailSelector);
-            Validators.setEmailValidation(editValidator, emailSelector);
+            Validators.setEmailValidation(editValidator, emailSelector, this.validationDictionary.valid_email);
         }
 
         if ($passwordElement && $password2Element) {
+            const { password: enterPassword, password_match: matchPassword } = this.validationDictionary;
             editValidator.remove(passwordSelector);
             editValidator.remove(password2Selector);
             Validators.setPasswordValidation(
@@ -340,6 +355,7 @@ export default class Account extends PageManager {
                 passwordSelector,
                 password2Selector,
                 this.passwordRequirements,
+                createPasswordValidationErrorTextObject(enterPassword, enterPassword, matchPassword, this.passwordRequirements.error),
                 true,
             );
         }
@@ -379,15 +395,6 @@ export default class Account extends PageManager {
                 },
                 errorMessage: this.context.lastName,
             },
-            {
-                selector: `${formEditSelector} input[name='account_phone']`,
-                validate: (cb, val) => {
-                    const result = val.length;
-
-                    cb(result);
-                },
-                errorMessage: this.context.phoneNumber,
-            },
         ]);
 
         $editAccountForm.on('submit', event => {
@@ -404,6 +411,7 @@ export default class Account extends PageManager {
     registerInboxValidation($inboxForm) {
         const inboxValidator = nod({
             submit: 'form[data-inbox-form] input[type="submit"]',
+            tap: announceInputErrorMessage,
         });
 
         inboxValidator.add([

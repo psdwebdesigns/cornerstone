@@ -1,13 +1,36 @@
-<ul class="breadcrumbs" itemscope itemtype="http://schema.org/BreadcrumbList">
-    {{#each breadcrumbs}}
-        <li class="breadcrumb {{#if @last}}is-active{{/if}}" itemprop="itemListElement" itemscope itemtype="http://schema.org/ListItem">
-            {{#if url}}
-                <a href="{{url}}" class="breadcrumb-label" itemprop="item"><span itemprop="name">{{name}}</span></a>
-            {{else}}
-                <meta itemprop="item" content="{{url}}">
-                <span class="breadcrumb-label" itemprop="name">{{name}}</span>
-            {{/if}}
-            <meta itemprop="position" content="{{@index}}" />
-        </li>
-    {{/each}}
-</ul>
+<nav aria-label="Breadcrumb">
+    <ol class="breadcrumbs">
+        {{#unless theme_settings.hide_breadcrumbs }}
+            {{#each breadcrumbs}}
+                <li class="breadcrumb {{#if @last}}is-active{{/if}}">
+                    <a class="breadcrumb-label"
+                       href="{{url}}"
+                       {{#if @last}}aria-current="page"{{/if}}
+                    >
+                        <span>{{name}}</span>
+                    </a>
+                </li>
+            {{/each}}
+        {{/unless}}
+    </ol>
+</nav>
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement":
+    [
+        {{#each breadcrumbs}}
+        {
+            "@type": "ListItem",
+            "position": {{add @index 1}},
+            "item": {
+                "@id": {{{JSONstringify url}}},
+                "name": {{{JSONstringify name}}}
+            }
+        }{{#unless @last}},{{/unless}}
+        {{/each}}
+    ]
+}
+</script>

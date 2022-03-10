@@ -21,9 +21,9 @@
 
 .optimizedCheckout-header {
     background-color: stencilColor("optimizedCheckout-header-backgroundColor");
-    // scss-lint:disable StringQuotes
+    /* stylelint-disable function-url-quotes*/
     background-image: url(stencilImage('optimizedCheckout-backgroundImage', 'optimizedCheckout-backgroundImage-size'));
-    // scss-lint:enable StringQuotes
+    /* stylelint-enable */
     background-size: cover;
     border-color: stencilColor("optimizedCheckout-header-borderColor");
     color: stencilColor("optimizedCheckout-header-textColor");
@@ -200,7 +200,7 @@ a {
 .optimizedCheckout-orderSummary {
     background-color: stencilColor("optimizedCheckout-orderSummary-backgroundColor");
     border-color: stencilColor("optimizedCheckout-orderSummary-borderColor");
-    box-shadow: 0 1px 4px transparentize(stencilColor("optimizedCheckout-orderSummary-borderColor"), 0.4);
+    box-shadow: 0 4px 8px transparentize(stencilColor("optimizedCheckout-orderSummary-borderColor"), 0.5);
 }
 
 .optimizedCheckout-orderSummary-cartSection {

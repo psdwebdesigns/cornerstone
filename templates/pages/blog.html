@@ -9,15 +9,17 @@ blog:
 
 {{> components/common/breadcrumbs breadcrumbs=breadcrumbs}}
 
-<main class="page">
-    <h1 class="page-heading">{{ blog.name }}</h1>
+<section class="page">
+    {{#unless theme_settings.hide_blog_page_heading }}
+        <h1 class="page-heading">{{ blog.name }}</h1>
+    {{/unless}}
 
     {{#each blog.posts}}
         {{> components/blog/post post=this}}
     {{/each}}
 
     {{> components/common/paginator pagination.blog}}
-</main>
+</section>
 
 {{/partial}}
 {{> layout/base}}

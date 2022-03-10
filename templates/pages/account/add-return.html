@@ -4,7 +4,7 @@
 <h1 class="page-heading">{{lang 'account.returns.new_return' }}</h1>
 {{> components/account/navigation account_page='returns'}}
 
-<main class="account account--fixed account--addReturn">
+<div class="account account--fixed account--addReturn">
     <div class="account-body">
         <section class="account-content">
 
@@ -37,7 +37,7 @@
                                             <dl class="definitionList">
                                                 {{#each options}}
                                                 <dt class="definitionList-label">{{name}}:</dt>
-                                                <dd class="definitionList-description">{{{value}}}</dd>
+                                                <dd class="definitionList-description">{{{sanitize value}}}</dd>
                                                 {{/each}}
                                             </dl>
                                             {{/if}}
@@ -100,7 +100,7 @@
 
         </section>
     </div>
-</main>
+</div>
 
 {{/partial}}
 {{> layout/base}}
